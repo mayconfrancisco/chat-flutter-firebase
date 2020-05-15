@@ -3,9 +3,9 @@
 Projeto **Flutter** de um **Chat** utilizando as APIs do **Firebase** \
 O projeto envia mensagens de texto e arquivos
 
-<img src="https://raw.githubusercontent.com/mayconfrancisco/chat-flutter-firebase/master/imgs_git/chat_flutter_ios.png" alt="Imagem do App Chat Flutter iOS" width="380"/>
+<img src="https://raw.githubusercontent.com/mayconfrancisco/chat-flutter-firebase/master/imgs_git/chat_flutter_ios.png" alt="Imagem do App Chat Flutter iOS" width="330px"/>
 
-<img src="https://raw.githubusercontent.com/mayconfrancisco/chat-flutter-firebase/master/imgs_git/chat_flutter_android.png" alt="Imagem do App Chat Flutter iOS" width="280"/>
+<img src="https://raw.githubusercontent.com/mayconfrancisco/chat-flutter-firebase/master/imgs_git/chat_flutter_android.png" alt="Imagem do App Chat Flutter iOS" width="260px"/>
 
 ## Serviços utilizados
 **Firebase Firestore** </br>
