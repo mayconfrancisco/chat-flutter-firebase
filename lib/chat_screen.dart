@@ -1,6 +1,9 @@
 
+import 'dart:io';
+
 import 'package:chat_flutter_firebase/text_composer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -10,8 +13,25 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
 
-  void _sendMessage(text) {
-    Firestore.instance.collection('messages').add({'text' : text});
+  void _sendMessage({String text, File imgFile}) async {
+    Map<String, dynamic> data = Map();
+
+    if (imgFile != null) {
+      StorageUploadTask task = FirebaseStorage.instance.ref().child('images').child(
+        DateTime.now().millisecondsSinceEpoch.toString()
+      ).putFile(imgFile);
+
+      StorageTaskSnapshot taskSnapshot = await task.onComplete;
+      String imgUrl = await taskSnapshot.ref.getDownloadURL();
+
+      data['imgUrl'] = imgUrl;
+    }
+
+    if (text != null) {
+      data['text'] = text;
+    }
+
+    Firestore.instance.collection('messages').add(data);
   }
 
   @override
@@ -21,7 +41,35 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Text('Chat Flutter'),
         elevation: 0,
       ),
-      body: TextComposer(_sendMessage),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: Firestore.instance.collection('messages').snapshots(),
+              builder: (context, snapshotMsgs) {
+                switch (snapshotMsgs.connectionState) {
+                  case ConnectionState.none:
+                  case ConnectionState.waiting:
+                    return Center(child: CircularProgressIndicator());
+                  default:
+                    List<DocumentSnapshot> documents = snapshotMsgs.data.documents.reversed.toList();
+                    return ListView.builder(
+                      itemCount: documents.length,
+                      reverse: true,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(documents[index].data['text'] ?? documents[index].data['imgUrl']),
+                        );
+                      }
+                    );
+                }
+              }
+            )
+          ),
+
+          TextComposer(_sendMessage),
+        ],
+      ),
     );
   }
 
