@@ -1,6 +1,7 @@
 
 import 'dart:io';
 
+import 'package:chat_flutter_firebase/chat_message.dart';
 import 'package:chat_flutter_firebase/text_composer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +19,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   FirebaseUser _currentUser;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -29,7 +31,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /*
+   *
    * Get User Firebase / Login
+   * 
    */
   Future<FirebaseUser> _getUser() async {
     if (_currentUser != null) return _currentUser;
@@ -59,9 +63,28 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /*
+   *
+   * SignOut
+   * 
+   */
+  void _signOut() {
+    FirebaseAuth.instance.signOut();
+    _googleSignIn.signOut();
+    _scaffoldKey.currentState.showSnackBar(SnackBar(
+      backgroundColor: Colors.red,
+      content: Text('Você saiu com sucesso!')
+    ));
+    setState(() {});
+  }
+
+  /*
+   *
    * Send message or File message
+   * 
    */
   void _sendMessage({String text, File imgFile}) async {
+    if ((text == null || text.isEmpty) && imgFile == null) return;
+
     final FirebaseUser user = await _getUser();
 
     if (user == null) {
@@ -71,23 +94,33 @@ class _ChatScreenState extends State<ChatScreen> {
           backgroundColor: Colors.red,
         )
       );
+      return;
     }
 
     Map<String, dynamic> data = {
       "uid": user.uid,
       "senderName": user.displayName,
-      "senderPhotoUrl": user.photoUrl
+      "senderPhotoUrl": user.photoUrl,
+      "time": Timestamp.now(),
     };
 
     if (imgFile != null) {
-      StorageUploadTask task = FirebaseStorage.instance.ref().child('images').child(
+      StorageUploadTask task = FirebaseStorage.instance.ref().child('images').child('user-${user.uid}').child(
         DateTime.now().millisecondsSinceEpoch.toString()
       ).putFile(imgFile);
+
+      setState(() {
+        _isLoading = true;
+      });
 
       StorageTaskSnapshot taskSnapshot = await task.onComplete;
       String imgUrl = await taskSnapshot.ref.getDownloadURL();
 
       data['imgUrl'] = imgUrl;
+      
+      setState(() {
+        _isLoading = false;
+      });
     }
 
     if (text != null) {
@@ -98,21 +131,32 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /*
+   *
    * Build
+   * 
    */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Text('Chat Flutter'),
+        title: Text(_currentUser != null ? 'Olá, ${_currentUser.displayName}' : 'Chat Flutter'),
+        centerTitle: true,
         elevation: 0,
+        actions: <Widget>[
+          _currentUser != null 
+            ? IconButton(
+              icon: Icon(Icons.exit_to_app), 
+              onPressed: _signOut
+            )
+            : Container(),
+        ],
       ),
       body: Column(
         children: <Widget>[
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: Firestore.instance.collection('messages').snapshots(),
+              stream: Firestore.instance.collection('messages').orderBy('time').snapshots(),
               builder: (context, snapshotMsgs) {
                 switch (snapshotMsgs.connectionState) {
                   case ConnectionState.none:
@@ -124,8 +168,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       itemCount: documents.length,
                       reverse: true,
                       itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(documents[index].data['text'] ?? documents[index].data['imgUrl']),
+                        return ChatMessage(
+                          documents[index].data, 
+                          documents[index].data['uid'] == _currentUser?.uid
                         );
                       }
                     );
@@ -134,6 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
             )
           ),
 
+          _isLoading ? LinearProgressIndicator() : Container(),
           TextComposer(_sendMessage),
         ],
       ),

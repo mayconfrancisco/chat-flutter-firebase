@@ -26,7 +26,7 @@ class _TextComposerState extends State<TextComposer> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {    
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
